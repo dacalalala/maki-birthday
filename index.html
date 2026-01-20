@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Maki's Upside Down Mission</title>
+    <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --theme-red: #ff1100;
+            --theme-blue: #00aaff;
+            --bg-dark: #050510;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: var(--bg-dark);
+            font-family: 'Roboto', sans-serif;
+            color: #dcdcdc;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        #preload-images { display: none; }
+
+        /* 通用全螢幕遮罩樣式 */
+        .full-screen-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+            text-align: center;
+            touch-action: auto;
+        }
+
+        /* 開場畫面 */
+        #intro-screen {
+            background: linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8)), url('https://i.ibb.co/QFZh9fLH/Floor1.png');
+            background-size: cover;
+            background-position: center;
+        }
+
+        /* 結尾畫面 */
+        #ending-screen {
+            background: #000;
+            display: none; /* 預設隱藏 */
+            z-index: 200; /* 比開場更高 */
+        }
+
+        .content-box {
+            background: rgba(26, 26, 46, 0.95);
+            border: 3px solid var(--theme-red);
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            box-shadow: 0 0 40px rgba(255, 17, 0, 0.5);
+            animation: fadeIn 1s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            font-family: 'Creepster', cursive;
+            color: var(--theme-red);
+            text-shadow: 0 0 15px var(--theme-red);
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            letter-spacing: 2px;
+        }
+
+        p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+
+        /* 按鈕樣式 */
+        .start-btn {
+            background: var(--theme-red);
+            color: #fff;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.5rem;
+            font-family: 'Creepster', cursive;
+            cursor: pointer;
+            box-shadow: 0 0 20px var(--theme-red);
+            transition: transform 0.2s;
+            animation: pulse 2s infinite;
+        }
+        .start-btn:active { transform: scale(0.95); }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 20px var(--theme-red); }
+            50% { box-shadow: 0 0 40px var(--theme-red), 0 0 60px var(--theme-red); }
+            100% { box-shadow: 0 0 20px var(--theme-red); }
+        }
+
+        /* 遊戲主介面 */
+        #game-container {
+            display: none;
+            width: 100%; height: 100%;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #header {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            pointer-events: auto;
+        }
+
+        #header h2 {
+            font-family: 'Creepster', cursive;
+            color: var(--theme-red);
+            text-shadow: 0 0 10px var(--theme-red);
+            font-size: 2rem;
+            margin: 0;
+        }
+
+        #counter {
+            font-size: 1.2rem;
+            color: #fff;
+            margin-top: 5px;
+            text-shadow: 0 0 5px var(--theme-blue);
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 30px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: auto;
+        }
+
+        .floor-btn {
+            background: rgba(255, 17, 0, 0.2);
+            border: 2px solid var(--theme-red);
+            color: var(--theme-red);
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-family: 'Creepster', cursive;
+            font-size: 1.2rem;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s;
+        }
+
+        .floor-btn.active {
+            background: var(--theme-red);
+            color: #000;
+            box-shadow: 0 0 15px var(--theme-red);
+        }
+
+        canvas { display: block; }
+
+        /* 彈窗設計 */
+        #modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 20;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+            touch-action: auto;
+        }
+
+        .modal-content {
+            background: #1a1a2e;
+            border: 2px solid var(--theme-red);
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 450px;
+            max-height: 90vh;
+            overflow-y: auto;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(255, 17, 0, 0.4);
+            position: relative;
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
+        /* 右上角關閉按鈕 */
+        .close-x {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 2rem;
+            line-height: 1rem;
+            color: #888;
+            cursor: pointer;
+            font-weight: bold;
+            z-index: 50;
+            padding: 10px; /* 增加點擊區域 */
+        }
+        .close-x:hover { color: #fff; }
+
+        .particle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: float 10s infinite linear;
+            z-index: 101;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0) translateX(0); opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { transform: translateY(-100vh) translateX(20px); opacity: 0; }
+        }
+
+        input[type="text"] {
+            width: 80%;
+            padding: 10px;
+            margin: 15px 0;
+            background: #000;
+            border: 1px solid #555;
+            color: #fff;
+            border-radius: 5px;
+            font-size: 1rem;
+            pointer-events: auto;
+            touch-action: manipulation;
+        }
+        
+        input[type="text"]:focus {
+            outline: 2px solid var(--theme-blue);
+            background: #111;
+        }
+
+        button.action-btn {
+            background: var(--theme-blue);
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--theme-blue);
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            height: 60vh;
+            overflow: hidden;
+            display: none;
+            margin-top: 10px;
+            background: #000;
+            border: 2px solid var(--theme-red);
+            border-radius: 8px;
+        }
+        
+        .video-container iframe {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+        }
+
+        .fallback-link {
+            display: block;
+            margin-top: 10px;
+            color: var(--theme-blue);
+            text-decoration: underline;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .feedback {
+            margin-top: 10px;
+            font-weight: bold;
+            min-height: 20px;
+        }
+        .correct { color: #00ff00; text-shadow: 0 0 5px #00ff00; }
+        .wrong { color: #ff0000; text-shadow: 0 0 5px #ff0000; }
+
+        /* 結尾圖片 */
+        #ending-img {
+            max-width: 100%;
+            border-radius: 10px;
+            border: 2px solid #fff;
+            margin-bottom: 20px;
+            box-shadow: 0 0 20px #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="preload-images">
+        <img id="bg-1f" src="https://i.ibb.co/QFZh9fLH/Floor1.png" crossorigin="anonymous">
+        <img id="bg-2f" src="https://i.ibb.co/9kmTjWZq/Floor2.png" crossorigin="anonymous">
+    </div>
+
+    <div id="intro-screen" class="full-screen-overlay">
+        <div class="content-box">
+            <h1>The Upside Down CoM</h1>
+            <p>
+                The world has been swallowed by the Upside Down! 
+                <br><br>
+                As <strong>Kawaii Superman Maki</strong>, only you can save your friends trapped in the darkness.
+                <br><br>
+                Find them, answer their questions correctly to restore their memories, and bring them back to the light!
+            </p>
+            <button class="start-btn" onclick="startGame()">NEXT >></button>
+        </div>
+    </div>
+
+    <div id="ending-screen" class="full-screen-overlay">
+        <div class="content-box" style="border-color: #00ff00; box-shadow: 0 0 40px #00ff00;">
+            <img id="ending-img" src="https://image2url.com/r2/default/images/1768916351727-3b9b27f1-eb49-48d3-9d7e-ef88a86b1fb1.png" alt="Happy Birthday">
+            <h1 style="color: #00ff00; text-shadow: 0 0 15px #00ff00;">Mission Accomplished!</h1>
+            <p>
+                Because of your bravery, all your friends have been rescued from the Upside Down!
+                <br><br>
+                You have brought them back to the real world. Now, let's celebrate this wonderful day together.
+                <br><br>
+                <strong>HAPPY BIRTHDAY MAKI!</strong>
+            </p>
+        </div>
+    </div>
+
+    <div id="game-container">
+        <div id="ui-layer">
+            <div id="header">
+                <h2>Maki's Mission</h2>
+                <div id="counter">Friends Saved: <span id="found-count">0</span> / 8</div>
+            </div>
+            <div id="controls">
+                <button class="floor-btn active" onclick="changeFloor(1)">1F</button>
+                <button class="floor-btn" onclick="changeFloor(2)">2F</button>
+            </div>
+        </div>
+
+        <div id="modal-overlay">
+            <div class="modal-content">
+                <div class="close-x" onclick="closeModal()">×</div>
+
+                <h2 id="modal-title" style="font-family: 'Creepster'; color: #ff1100;">Found Someone!</h2>
+                
+                <div style="width: 100px; height: 100px; margin: 0 auto 10px auto; display: flex; justify-content: center; align-items: center;">
+                    <img id="modal-char-img" src="" style="max-width: 100%; max-height: 100%; object-fit: contain; border: 2px solid #fff; box-shadow: 0 0 10px #fff;">
+                </div>
+
+                <div id="quiz-section">
+                    <p id="modal-question">Question goes here...</p>
+                    <input type="text" id="answer-input" placeholder="Type answer here..." onpointerdown="event.stopPropagation()">
+                    <br>
+                    <button class="action-btn" onclick="checkAnswer()">Submit</button>
+                    <p class="feedback" id="feedback-msg"></p>
+                </div>
+                
+                <div id="video-section">
+                    <div class="video-container" id="video-frame-container"></div>
+                    <a id="video-fallback-link" class="fallback-link" href="#" target="_blank">Open in YouTube App</a>
+                </div>
+                
+                <button id="close-btn" class="action-btn" style="background:#555; margin-top:15px; display:none;" onclick="closeModal()">Close & Continue</button>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <script>
+        // ==========================================
+        // CONFIG
+        // ==========================================
+        
+        const PLAYER_ICON_SRC = 'https://image2url.com/r2/default/images/1768899798959-f0073643-d9a5-491f-b214-140ea23e76cb.png'; 
+
+        function cleanYouTubeId(url) {
+            let id = '';
+            if (url.includes('/shorts/')) {
+                id = url.split('/shorts/')[1];
+            } else if (url.includes('youtu.be/')) {
+                id = url.split('youtu.be/')[1];
+            } else if (url.includes('v=')) {
+                id = url.split('v=')[1];
+            }
+            if (id.includes('?')) id = id.split('?')[0];
+            if (id.includes('&')) id = id.split('&')[0];
+            return id;
+        }
+
+        const CHARACTERS = [
+            // Floor 1
+            { 
+                id: 1, name: "Party Yoshi", floor: 1, x: 0.2, y: 0.3, 
+                img: 'https://image2url.com/r2/default/images/1768899822616-7c070f89-21b5-477a-99b8-a2120bd74f4e.png',
+                question: "What was the date we went snorkeling together? (8-digit)", 
+                answer: "20241103", 
+                videoUrl: 'https://youtube.com/shorts/07uvU7JXUtg'
+            },
+            { 
+                id: 2, name: "Maria", floor: 1, x: 0.8, y: 0.2, 
+                img: 'https://image2url.com/r2/default/images/1768899833455-0ef466dc-b529-4195-88b5-83aea15dd8a1.png',
+                question: "Where did we go after the second Unity Ball? (No need to type in “Club”)", 
+                answer: "Staff Only", 
+                videoUrl: 'https://youtube.com/shorts/rFBOnJRm0dQ'
+            },
+            { 
+                id: 3, name: "Shy Yoshi", floor: 1, x: 0.5, y: 0.6, 
+                img: 'https://image2url.com/r2/default/images/1768899844650-347abd02-251f-4dd5-a1fc-8ec1340ad4ce.png',
+                question: "What was the gift I was planning to give to Hime, but I chose to share with you guys?", 
+                answer: "Cake", 
+                videoUrl: 'https://youtube.com/shorts/SXZotHTWW_U'
+            },
+            { 
+                id: 4, name: "Yuta", floor: 1, x: 0.3, y: 0.8, 
+                img: 'https://image2url.com/r2/default/images/1768899857387-88eba617-5ea6-46cf-a4bf-7f948aa4dc4c.png',
+                question: "What is the number of my car plate (4-digit, number only)", 
+                answer: "3804", 
+                videoUrl: 'https://youtube.com/shorts/ANQgcpbtHn4'
+            },
+            // Floor 2
+            { 
+                id: 5, name: "Tomoki", floor: 2, x: 0.2, y: 0.4, 
+                img: 'https://image2url.com/r2/default/images/1768899867772-e5233bd5-7d70-415a-9c56-e2c03140efcb.png',
+                question: "What was the class we went studying together (2 words)", 
+                answer: "Financial Reporting", 
+                videoUrl: 'https://youtube.com/shorts/gP2mOcKknW8'
+            },
+            { 
+                id: 6, name: "John", floor: 2, x: 0.7, y: 0.3, 
+                img: 'https://image2url.com/r2/default/images/1768899887758-323a3609-7891-4692-a301-7c448d592b48.png',
+                question: "What was the date that we were standing in ZhongShan station as gossip? (8-digit)", 
+                answer: "20250407", 
+                videoUrl: 'https://youtube.com/shorts/xx5D2QYjuRQ'
+            },
+            { 
+                id: 7, name: "Jelena", floor: 2, x: 0.5, y: 0.7, 
+                img: 'https://image2url.com/r2/default/images/1768900328782-d24c6daa-8d39-4ef3-b842-ac0a99e5b986.png',
+                question: "What was the date we went Bruno Mars concert (8-digit)", 
+                answer: "20240907", 
+                videoUrl: 'https://www.youtube.com/shorts/JlCByLYOj_U'
+            },
+            { 
+                id: 8, name: "Chin", floor: 2, x: 0.8, y: 0.8, 
+                img: 'https://image2url.com/r2/default/images/1768900348120-611246f2-d16a-45ac-a95f-b2df32a93f7e.png',
+                question: "What was the date that we took our very first photo together?", 
+                answer: "20230903", 
+                videoUrl: 'https://youtu.be/TiEeOMD255s'
+            },
+        ];
+
+        // ==========================================
+        // GAME ENGINE
+        // ==========================================
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let currentFloor = 1;
+        let foundIds = []; 
+        let gameStarted = false;
+        let interactionCooldown = false; // 防止關閉彈窗後立刻又觸發
+
+        const bg1F = document.getElementById('bg-1f');
+        const bg2F = document.getElementById('bg-2f');
+
+        const player = { x: 0, y: 0, targetX: 0, targetY: 0, speed: 0.08, size: 80, loaded: false };
+        const playerImg = new Image();
+        playerImg.crossOrigin = "anonymous";
+        playerImg.src = PLAYER_ICON_SRC;
+        playerImg.onload = () => { player.loaded = true; };
+
+        CHARACTERS.forEach(c => {
+            c.imageObj = new Image();
+            c.imageObj.crossOrigin = "anonymous";
+            c.imageObj.src = c.img;
+        });
+
+        function startGame() {
+            document.getElementById('intro-screen').style.display = 'none';
+            document.getElementById('game-container').style.display = 'block';
+            gameStarted = true;
+            resize();
+            draw();
+        }
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            if(player.x === 0) {
+                player.x = canvas.width / 2;
+                player.y = canvas.height / 2;
+                player.targetX = player.x;
+                player.targetY = player.y;
+            }
+        }
+        window.addEventListener('resize', resize);
+
+        canvas.addEventListener('pointerdown', (e) => {
+            if (!gameStarted) return;
+            player.targetX = e.clientX;
+            player.targetY = e.clientY;
+        });
+
+        function update() {
+            if (!gameStarted) return;
+            // 如果處於冷卻時間，停止偵測
+            if (interactionCooldown) return;
+
+            const dx = player.targetX - player.x;
+            const dy = player.targetY - player.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            
+            if (dist > 1) {
+                player.x += dx * player.speed;
+                player.y += dy * player.speed;
+            }
+
+            CHARACTERS.forEach(c => {
+                if (c.floor === currentFloor) {
+                    const cx = c.x * canvas.width;
+                    const cy = c.y * canvas.height;
+                    const distToChar = Math.sqrt(Math.pow(cx - player.x, 2) + Math.pow(cy - player.y, 2));
+                    
+                    if (distToChar < 60 && document.getElementById('modal-overlay').style.display !== 'flex') { 
+                        triggerEncounter(c);
+                    }
+                }
+            });
+        }
+
+        function drawFullImage(ctx, img, x, y, maxSize, isFound = false) {
+            if (!img.complete || img.naturalWidth === 0) return;
+
+            const imgRatio = img.naturalWidth / img.naturalHeight;
+            let drawWidth, drawHeight;
+
+            if (imgRatio > 1) {
+                drawWidth = maxSize;
+                drawHeight = maxSize / imgRatio;
+            } else {
+                drawHeight = maxSize;
+                drawWidth = maxSize * imgRatio;
+            }
+
+            ctx.save();
+            if (isFound) {
+                ctx.shadowColor = '#FFD700';
+                ctx.shadowBlur = 30; 
+            } else {
+                ctx.shadowColor = 'rgba(255,255,255,0.3)';
+                ctx.shadowBlur = 10;
+            }
+
+            ctx.drawImage(img, x - drawWidth / 2, y - drawHeight / 2, drawWidth, drawHeight);
+            ctx.restore();
+        }
+
+
+        function draw() {
+            if (!gameStarted) return;
+
+            let currentBgImg = bg1F;
+            if (currentFloor === 2) currentBgImg = bg2F;
+            
+            if (currentBgImg.naturalWidth > 0) {
+                const imgRatio = currentBgImg.naturalWidth / currentBgImg.naturalHeight;
+                const canvasRatio = canvas.width / canvas.height;
+                let drawWidth, drawHeight, offsetX, offsetY;
+
+                if (canvasRatio > imgRatio) {
+                    drawWidth = canvas.width;
+                    drawHeight = canvas.width / imgRatio;
+                    offsetX = 0;
+                    offsetY = (canvas.height - drawHeight) / 2;
+                } else {
+                    drawWidth = canvas.height * imgRatio;
+                    drawHeight = canvas.height;
+                    offsetX = (canvas.width - drawWidth) / 2;
+                    offsetY = 0;
+                }
+                ctx.save();
+                ctx.drawImage(currentBgImg, offsetX, offsetY, drawWidth, drawHeight);
+                ctx.fillStyle = "rgba(0, 0, 30, 0.5)"; 
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.restore();
+            } else {
+                ctx.fillStyle = "#000";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.font = 'bold 150px Roboto';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`${currentFloor}F`, canvas.width/2, canvas.height/2);
+            ctx.restore();
+
+            CHARACTERS.forEach(c => {
+                if (c.floor === currentFloor) {
+                    const cx = c.x * canvas.width;
+                    const cy = c.y * canvas.height;
+                    
+                    const isFound = foundIds.includes(c.id);
+                    drawFullImage(ctx, c.imageObj, cx, cy, 80, isFound);
+
+                    ctx.fillStyle = "#fff";
+                    ctx.font = "bold 14px Roboto";
+                    ctx.textAlign = "center";
+                    ctx.shadowColor = "#000";
+                    ctx.shadowBlur = 5;
+                    ctx.fillText(c.name, cx, cy + 55);
+
+                    if (isFound) {
+                        ctx.beginPath();
+                        ctx.arc(cx + 30, cy - 30, 12, 0, Math.PI*2);
+                        ctx.fillStyle = "#00ff00";
+                        ctx.fill();
+                        ctx.strokeStyle = "#fff";
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    }
+                }
+            });
+
+            if (player.loaded) {
+                drawFullImage(ctx, playerImg, player.x, player.y, player.size);
+            }
+
+            requestAnimationFrame(() => {
+                update();
+                draw();
+            });
+        }
+
+        function changeFloor(floor) {
+            currentFloor = floor;
+            document.querySelectorAll('.floor-btn').forEach((btn, idx) => {
+                btn.classList.toggle('active', idx + 1 === floor);
+            });
+        }
+
+        let activeChar = null;
+        const modal = document.getElementById('modal-overlay');
+        const qSection = document.getElementById('quiz-section');
+        const vSection = document.getElementById('video-section');
+        const videoFrameContainer = document.getElementById('video-frame-container');
+        const fallbackLink = document.getElementById('video-fallback-link');
+        const feedback = document.getElementById('feedback-msg');
+        const closeBtn = document.getElementById('close-btn');
+        const modalImg = document.getElementById('modal-char-img');
+        const answerInput = document.getElementById('answer-input');
+
+        function triggerEncounter(char) {
+            activeChar = char;
+            player.targetX = player.x;
+            player.targetY = player.y;
+            
+            modal.style.display = 'flex';
+            document.getElementById('modal-title').innerText = `Found ${char.name}!`;
+            document.getElementById('modal-question').innerText = char.question;
+            modalImg.src = char.img; 
+            
+            qSection.style.display = 'block';
+            vSection.style.display = 'none';
+            videoFrameContainer.innerHTML = ''; 
+            feedback.innerText = '';
+            answerInput.value = '';
+            closeBtn.style.display = 'none';
+
+            setTimeout(() => answerInput.focus(), 100);
+        }
+
+        function checkAnswer() {
+            const userAns = answerInput.value.trim().toLowerCase();
+            const correctAns = activeChar.answer.toLowerCase();
+
+            if (userAns === correctAns) {
+                feedback.innerText = "MEMORY RESTORED!";
+                feedback.className = "feedback correct";
+                
+                if(!foundIds.includes(activeChar.id)) {
+                    foundIds.push(activeChar.id);
+                    document.getElementById('found-count').innerText = foundIds.length;
+                }
+
+                setTimeout(() => {
+                    qSection.style.display = 'none';
+                    vSection.style.display = 'block';
+                    closeBtn.style.display = 'block';
+                    
+                    const videoId = cleanYouTubeId(activeChar.videoUrl);
+                    const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&rel=0`;
+                    videoFrameContainer.innerHTML = `<iframe src="${embedUrl}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+                    fallbackLink.href = `https://www.youtube.com/watch?v=${videoId}`;
+
+                }, 1000);
+            } else {
+                feedback.innerText = "Still Trapped in Upside Down... Try Again!";
+                feedback.className = "feedback wrong";
+            }
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+            videoFrameContainer.innerHTML = ''; 
+            qSection.style.display = 'block';
+            vSection.style.display = 'none';
+            
+            // 重要：設置冷卻時間，防止立刻又觸發碰撞
+            interactionCooldown = true;
+            setTimeout(() => {
+                interactionCooldown = false;
+            }, 1000);
+
+            // 檢查是否蒐集滿 8 個，如果是，跳轉結尾頁面
+            if (foundIds.length === 8) {
+                showEnding();
+            }
+        }
+
+        function showEnding() {
+            // 延遲一點點顯示，讓體驗更順暢
+            setTimeout(() => {
+                document.getElementById('ending-screen').style.display = 'flex';
+            }, 500);
+        }
+
+        function createParticles() {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            p.style.width = Math.random() * 5 + 'px';
+            p.style.height = p.style.width;
+            p.style.left = Math.random() * 100 + 'vw';
+            p.style.top = '100vh';
+            p.style.animationDuration = Math.random() * 5 + 5 + 's';
+            document.body.appendChild(p);
+            setTimeout(() => p.remove(), 10000);
+        }
+        setInterval(createParticles, 500);
+
+        window.onload = () => { 
+            resize();
+            document.getElementById('intro-screen').style.display = 'flex';
+        };
+
+    </script>
+</body>
+</html>
